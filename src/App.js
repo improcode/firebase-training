@@ -1,52 +1,94 @@
 import React, {Component} from 'react';
+import Paper from 'material-ui/Paper'
+import RaisedButton from 'material-ui/RaisedButton'
+import TextField from 'material-ui/TextField'
 
 
 class App extends Component {
     state = {
-        counter: 0
+        newTask: '',
+        tasks: null
+    }
+
+    newTaskHandler = (event, newValue) => {
+        this.setState({
+            newTask: newValue
+        })
     }
 
     componentDidMount() {
-        fetch('https://jfddl4-sandbox.firebaseio.com/artur/counter/.json')
-            .then(response => response.json())
-            .then(acctualCounterValFromDb => this.setState({
-                counter: acctualCounterValFromDb
-            }))
+        this.loadTasks()
     }
 
-    saveToDb = () => fetch(
-        'https://jfddl4-sandbox.firebaseio.com/artur/counter/.json',
-        {
-            method: 'PUT',
-            body: JSON.stringify(this.state.counter)
-        }
+    loadTasks = () => (
+        fetch('https://jfddl4-sandbox.firebaseio.com/artur/tasks/.json')
+            .then(function (response) {
+                return response.json();
+            })
+            .then(data => {
+                const dataInArray = (
+                    Object.entries(data || {})
+                        .map(el => ({
+                            key: el[0],
+                            value: el[1]
+                        }))
+                )
+                this.setState({
+                    tasks: dataInArray
+                })
+            })
     )
 
+    saveNewTask = () => {
+        fetch(
+            'https://jfddl4-sandbox.firebaseio.com/artur/tasks/.json',
+            {
+                method: 'POST',
+                body: JSON.stringify(this.state.newTask)
+            }
+        ).then(this.loadTasks)
 
-    decHandler = () => this.setState(
-        {
-            counter: this.state.counter - 1
-        },
-        this.saveToDb
-    )
-    incHandler = () => this.setState(
-        {
-            counter: this.state.counter + 1
-        },
-        this.saveToDb
-    )
+    }
 
+    deleteTask = (taskUid) => (
+        fetch('https://jfddl4-sandbox.firebaseio.com/artur/tasks/' + taskUid + '/.json',
+            {method: 'DELETE'}
+        ).then(this.loadTasks)
+    )
 
     render() {
         return (
             <div>
-                <h1>
-                    {this.state.counter}
-                </h1>
-                <button onClick={this.decHandler}>-</button>
-                <button onClick={this.incHandler}>+</button>
+                <TextField
+                    value={this.state.newTask}
+                    onChange={this.newTaskHandler}
+                />
+                <RaisedButton
+                    label={'SAVE'}
+                    onClick={this.saveNewTask}
+                />
+
+                {
+                    !this.state.tasks ?
+                        'Ładowanie..'
+                        :
+                        <ul>
+                            {
+                                this.state.tasks.map(
+                                    task => <li
+                                        key={task.key}
+                                        onClick={() => this.deleteTask(task.key)}
+                                    >
+                                        {task.value}</li>
+                                )
+                            }
+                        </ul>
+                }
+
             </div>
-        );
+
+        )
+            ;
     }
 }
 
